@@ -1,0 +1,51 @@
+name: generate animation # 工作流的名字，叫什么都行
+
+on: # 定义触发条件，什么时候运行这个脚本
+  # 每天自动运行一次（每24小时的0分时刻）
+  schedule:
+    - cron: "0 */24 * * *" 
+  
+  # 允许你手动在 GitHub 网站的 Actions 页面点击按钮来运行
+  workflow_dispatch:
+  
+  # 每当有代码推送到 master 分支时也运行
+  push:
+    branches:
+    - master
+    
+jobs: # 定义具体要执行的任务
+  generate:
+    runs-on: ubuntu-latest # 在一台最新的 Ubuntu 服务器上运行
+    timeout-minutes: 10 # 如果任务超过10分钟还没跑完，就自动终止
+    
+    steps: # 任务的具体步骤
+      # 第一步：生成贪吃蛇 SVG 动画
+      - name: generate github-contribution-grid-snake.svg
+        # 使用一个别人写好的、现成的 Action，名叫 Platane/snk
+        uses: Platane/snk/svg-only@v3 
+        with:
+          # 把你的 GitHub 用户名传给这个 Action
+          # ${{ github.repository_owner }} 会自动获取当前仓库所有者的名字
+          github_user_name: ${{ github.repository_owner }}
+          # 指定输出文件的路径和名字
+          # 这里会生成两个文件：一个亮色主题，一个暗色主题
+          outputs: |
+            dist/github-contribution-grid-snake.svg
+            dist/github-contribution-grid-snake-dark.svg?palette=github-dark
+        env:
+          # 使用 GitHub 自动提供的令牌来授权，以便 Action 可以读取你的贡献数据
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          
+      # 第二步：把上一步生成的文件推送到仓库的一个特定分支
+      - name: push github-contribution-grid-snake.svg to the output branch
+        # 使用另一个现成的 Action，名叫 crazy-max/ghaction-github-pages
+        uses: crazy-max/ghaction-github-pages@v3.1.0
+        with:
+          # 指定要推送到哪个分支，这里是 "output" 分支
+          # 这样做的好处是把生成的图片和你的主分支代码分开，保持整洁
+          target_branch: output
+          # 指定要去哪个文件夹里找要推送的文件（就是上一步生成的 dist 文件夹）
+          build_dir: dist
+        env:
+          # 同样需要授权才能推送到你的仓库
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
